@@ -57,7 +57,7 @@ def videoDet(stream):
       #check, frame = video.read()
       frame = stream.get_last()
     
-      cv2.imshow("Capturing", frame)
+      cv2.imshow("Python Viewer", frame)
 
       #picks up the key press Q and exits when pressed
       key=cv2.waitKey(1)
