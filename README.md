@@ -23,10 +23,7 @@ The process is a pipeline of operations that go as follows:
     2. Prepares the input frame to the model's requirements.
     3. Calls RedisAI to execute an object recognition model on the frame.
     4. Stores the model's outputs (i.e. people counted and their whereabouts inside the frame) in Redis Stream and TimeSeries.
-3. A video viewer written in python renders the final image based on real-time data from Redis' Streams.
-
-See ["My Other Stack is RedisEdge"](https://redislabs.com/blog/my-other-stack-is-redisedge/) for a wordy overview.
-Watch ["RedisConf19 Keynote Day 2"](https://www.youtube.com/watch?v=t1U7ulz1_Dg&feature=youtu.be&t=4767) for a video demonstration.
+3. A video viewer written in python (viewer.py) renders the final image based on real-time data from Redis' Streams.
 
 ### The RedisEdge Stack
 
