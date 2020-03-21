@@ -3,7 +3,7 @@
 
 # RedisEdge Real-time Video Analytics
 
-An example of using Redis Streams, RedisGears, and RedisAI for Real-time Video Analytics (i.e. counting people) todemostrate a python producer python consumer concept.
+An example of using Redis Streams, RedisGears, RedisAI for Real-time Video Analytics (i.e. counting people) to demostrate a python producer python consumer concept.
 
 ![demo](demo2.jpg)
 
@@ -84,7 +84,7 @@ Prerequisites:
 The following will spin up a fully dockerized environment:
 
 ```sh
-$ docker-compose -f docker-compose.test.yaml up
+$ docker-compose up
 ```
 
 ```sh
@@ -97,7 +97,6 @@ Stack versions:
 * Redis v5.0.5
 * RedisAI v0.2.1
 * RedisGears v0.3.1
-* RedisTimeSeries v0.2.0
 
 Notes:
 
