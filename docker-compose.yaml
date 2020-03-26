@@ -17,4 +17,4 @@ services:
     # devices:
     #  - /dev/video0:/dev/video0
     # command: ['capture.py', '--url', 'redis://redisedge:6379']
-    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount.mp4']
+    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount2.mp4']

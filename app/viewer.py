@@ -49,7 +49,9 @@ class RedisImageStream(object):
             pass
 
 def videoDet(stream):
-
+    
+  win_name = "Python RedisEdge Analytics Viewer"
+  cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
   #continuously processes video feed and displays in window until Q is pressed
   while True:
     
@@ -57,7 +59,7 @@ def videoDet(stream):
       #check, frame = video.read()
       frame = stream.get_last()
     
-      cv2.imshow("Python Viewer", frame)
+      cv2.imshow(win_name, frame)
 
       #picks up the key press Q and exits when pressed
       key=cv2.waitKey(1)
