@@ -5,7 +5,7 @@
 
 An example of using ReadisEdge (Redis Streams, RedisGears, RedisAI) for Real-time Video Analytics (i.e. counting people) to demostrate a python producer python consumer concept.
 
-![demo](demo3.jpg)
+<img src="./demo3.jpg" width="650" height="500">
 
 ## Overview
 This project is forked from original work in https://github.com/RedisGears/EdgeRealtimeVideoAnalytics  
