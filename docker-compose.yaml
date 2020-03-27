@@ -9,12 +9,12 @@ services:
     depends_on:
       - redisedge
     command: ['init.py', '--url', 'redis://redisedge:6379']
-  capture:
-    build: ./app
-    depends_on:
-      - init
-    # To capture from a webcam, uncomment the next lines
-    # devices:
-    #  - /dev/video0:/dev/video0
-    # command: ['capture.py', '--url', 'redis://redisedge:6379']
-    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount2.mp4']
+#  capture:
+#    build: ./app
+#    depends_on:
+#      - init
+#    # To capture from a webcam, uncomment the next lines
+#    # devices:
+#    #  - /dev/video0:/dev/video0
+#    # command: ['capture.py', '--url', 'redis://redisedge:6379']
+#    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount2.mp4']
