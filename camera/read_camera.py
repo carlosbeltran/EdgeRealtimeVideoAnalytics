@@ -9,9 +9,6 @@ except ImportError:
 class Webcam:
     def __init__(self, infile=0, fps=15.0):
         self.cam = cv2.VideoCapture(infile)
-        #self.cam.set(cv2.CAP_PROP_FPS, fps)
-        #self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        #self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     def __iter__(self):
         self.count = -1
@@ -62,4 +59,4 @@ if __name__ == '__main__':
         }
         #_id = conn.execute_command('xadd', args.output, 'MAXLEN', '~', '1000', '*', 'count', msg['count'], 'img', msg['image'])
         _id = conn.xadd(args.output, msg, maxlen=args.maxlen)
-        print(('count: {} id: {}'.format(count, _id)))
+        #print(('count: {} id: {}'.format(count, _id)))
