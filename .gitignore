@@ -4,3 +4,5 @@ venv2.7/
 *~
 *.swp
 *.swo
+
+app/tags

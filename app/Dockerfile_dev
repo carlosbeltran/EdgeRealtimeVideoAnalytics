@@ -1,9 +1,11 @@
 FROM python:3.7.3
 
-#WORKDIR /app
 #ADD . /app
+#VOLUME ["/app"]
+WORKDIR /app/
 
+ADD ./requirements.txt /tmp/requirements.txt
 RUN set -ex; \
-    pip install -r requirements.txt;
+    pip install -r /tmp/requirements.txt;
 
 ENTRYPOINT [ "python3" ]

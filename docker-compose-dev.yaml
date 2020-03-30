@@ -7,20 +7,29 @@ services:
       - 6379:6379
   init:
     build: 
-      context: ./app
-      dockerfile: Dockerfile_dev
+        context: ./app
+        dockerfile: Dockerfile_dev
+    #stdin_open: true
+    #tty: true
     depends_on:
       - redisedge
     volumes:
       - ./app:/app
-    working_dir: /app
+        #entrypoint: /bin/sh
     command: ['init.py', '--url', 'redis://redisedge:6379']
-#  capture:
-#    build: ./app
-#    depends_on:
-#      - init
+#volumes:
+#    app:
+#      driver: local
+#      driver_opts:
+#        o: bind
+#        type: none
+#        device: /home/carlos/GITProjects/EdgeRealtimeVideoAnalytics/app/
+  capture:
+    build: ./app
+    depends_on:
+      - init
 #    # To capture from a webcam, uncomment the next lines
 #    # devices:
 #    #  - /dev/video0:/dev/video0
 #    # command: ['capture.py', '--url', 'redis://redisedge:6379']
-#    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount2.mp4']
+    command: ['capture.py', '--url', 'redis://redisedge:6379', 'data/countvoncount2.mp4']
