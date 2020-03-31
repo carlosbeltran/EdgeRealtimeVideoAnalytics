@@ -12,92 +12,6 @@ from redisgears import executeCommand as execute
 _mspf = 1000 / 10.0      # Msecs per frame (initialized with 10.0 FPS)
 _next_ts = 0             # Next timestamp to sample a frame
 
-class SimpleMovingAverage(object):
-    ''' Simple moving average '''
-    def __init__(self, value=0.0, count=7):
-        '''
-        @value - the initialization value
-        @count - the count of samples to keep
-        '''
-        self.count = int(count)
-        self.current = float(value)
-        self.samples = [self.current] * self.count
-
-    def __str__(self):
-        return str(round(self.current, 3))
-
-    def add(self, value):
-        ''' Adds the next value to the average '''
-        v = float(value)
-        self.samples.insert(0, v)
-        o = self.samples.pop()
-        self.current = self.current + (v-o)/self.count
-
-class Profiler(object):
-    ''' Mini profiler '''
-    names = []  # Steps names in order
-    data = {}   # ... and data
-    last = None
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        s = ''
-        for name in self.names:
-            s = '{}{}:{}, '.format(s, name, self.data[name])
-        return(s[:-2])
-
-    def __delta(self):
-        ''' Returns the time delta between invocations '''
-        now = time()*1000       # Transform to milliseconds
-        if self.last is None:
-            self.last = now
-        value = now - self.last
-        self.last = now
-        return value
-
-    def start(self):
-        ''' Starts the profiler '''
-        self.last = time()*1000
-
-    def add(self, name):
-        ''' Adds/updates a step's duration '''
-        value = self.__delta()
-        if name not in self.data:
-            self.names.append(name)
-            self.data[name] = SimpleMovingAverage(value=value)
-        else:
-            self.data[name].add(value)
-
-    def assign(self, name, value):
-        ''' Assigns a step with a value '''
-        if name not in self.data:
-            self.names.append(name)
-            self.data[name] = SimpleMovingAverage(value=value)
-        else:
-            self.data[name].add(value)
-
-    def get(self, name):
-        ''' Gets a step's value '''
-        return self.data[name].current
-
-'''
-The profiler is used first and foremost for keeping track of the total (average) time it takes to process
-a frame - the information is required for setting the FPS dynamically. As a side benefit, it also provides
-per step metrics.
-'''
-#prf = Profiler()
-
-#def downsampleStream(x):
-#    ''' Drops input frames to match FPS '''
-#    global _mspf, _next_ts
-#    execute('TS.INCRBY', 'camera:0:in_fps', 1, 'RESET', 1)  # Store the input fps count
-#    ts, _ = map(int, str(x['streamId']).split('-'))         # Extract the timestamp part from the message ID
-#    sample_it = _next_ts <= ts
-#    if sample_it:                                           # Drop frames until the next timestamp is in the present/past
-#        _next_ts = ts + _mspf
-#    return sample_it
-
 def process_image(img, height):
     ''' Utility to resize a rectangular image to a padded square (letterbox) '''
     color = (127.5, 127.5, 127.5)
@@ -116,9 +30,7 @@ def process_image(img, height):
 
 def runYolo(x):
     ''' Runs the model on an input image from the stream '''
-    #global prf
     IMG_SIZE = 416     # Model's input image size
-    #prf.start()        # Start a new profiler iteration
 
     # log('read')
 
@@ -126,7 +38,6 @@ def runYolo(x):
     buf = io.BytesIO(x['image'])
     pil_image = Image.open(buf)
     numpy_img = np.array(pil_image)
-    #prf.add('read')
 
     # log('resize')
     # Resize, normalize and tensorize the image for the model (number of images, width, height, channels)
@@ -134,7 +45,6 @@ def runYolo(x):
     # log('tensor')
     img_ba = bytearray(image.tobytes())
     image_tensor = redisAI.createTensorFromBlob('FLOAT', [1, IMG_SIZE, IMG_SIZE, 3], img_ba)
-    #prf.add('resize')
 
     # log('model')
     # Create the RedisAI model runner and run it
@@ -143,7 +53,6 @@ def runYolo(x):
     redisAI.modelRunnerAddOutput(modelRunner, 'output')
     model_replies = redisAI.modelRunnerRun(modelRunner)
     model_output = model_replies[0]
-    #prf.add('model')
 
     # log('script')
     # The model's output is processed with a PyTorch script for non maxima suppression
@@ -151,7 +60,6 @@ def runYolo(x):
     redisAI.scriptRunnerAddInput(scriptRunner, model_output)
     redisAI.scriptRunnerAddOutput(scriptRunner)
     script_reply = redisAI.scriptRunnerRun(scriptRunner)
-    #prf.add('script')
 
     # log('boxes')
     # The script outputs bounding boxes
@@ -180,13 +88,12 @@ def runYolo(x):
 
         # Store boxes as a flat list
         boxes_out += [x1,y1,x2,y2]
-    #prf.add('boxes')
 
     return x['streamId'], people_count, boxes_out
 
 def storeResults(x):
     ''' Stores the results in Redis Stream and TimeSeries data structures '''
-    global _mspf#, prf
+    global _mspf
     ref_id, people, boxes= x[0], int(x[1]), x[2]
     ref_msec = int(str(ref_id).split('-')[0])
 
@@ -200,17 +107,9 @@ def storeResults(x):
 
     # Adjust mspf to the moving average duration
     total_duration = res_msec - ref_msec
-    #prf.assign('total', total_duration)
-    #avg_duration = prf.get('total')
     avg_duration = 40 # forced trying to get rid fo the profiler
     _mspf = avg_duration * 1.05  # A little extra leg room
 
-    # Record profiler steps
-    #for name in prf.names:
-    #    current = prf.data[name].current
-    #    execute('TS.ADD', 'camera:0:prf_{}'.format(name), ref_msec, current)
-
-    #prf.add('store')
     # Make an arithmophilial homage to Count von Count for storage in the execution log
     if people == 0:
         return 'Now there are none.'
