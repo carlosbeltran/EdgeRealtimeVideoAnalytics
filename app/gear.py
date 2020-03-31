@@ -8,6 +8,9 @@ from PIL import Image
 
 from redisgears import executeCommand as execute
 
+face_cascade = cv2.CascadeClassifier('models/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('models/haarcascade_eye.xml')
+
 # Globals for downsampling
 _mspf = 1000 / 10.0      # Msecs per frame (initialized with 10.0 FPS)
 _next_ts = 0             # Next timestamp to sample a frame
@@ -123,9 +126,39 @@ def runYolo(x):
     storeYoloResults(x['streamId'], int(people_count), boxes_out)
     return x
 
+def runFaceDetection(x):
+
+    # Read the image from the stream's message
+    buf = io.BytesIO(x['image'])
+    pil_image = Image.open(buf)
+    numpy_img = np.array(pil_image)
+
+    #img=cv2.imread('face.jpg')
+    gray = cv2.cvtColor(numpy_img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray)
+    boxes_out = []
+    people_count = 0
+    for (x,y,w,h) in faces:
+        boxes_out += [x,y,x+w,y+h]
+        people_count += 1
+        #cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
+        #roi_gray  = gray[y:y+h, x:x+w]
+        #roi_color = img[y:y+h, x:x+w]
+        #eyes=eye_cascade.detectMultiScale(roi_gray)
+        #for(ex,ey,ew,eh) in eyes:
+        #    cv2.rectangle(roi_color,(ex, ey),(ex+ew, ey+eh),(0,255,0),2)
+        #        print(ex,ey)
+        #cv2.imshow('img',img)
+    ref_id = x['streamId']
+    boxes= boxes_out
+    people = int(people_count)
+    # Store the output in its own stream
+    res_id = execute('XADD', 'camera:0:facedect', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes, 'people', people)
+
 # Create and register a gear that for each message in the stream
 gb = GearsBuilder('StreamReader')
 #gb.filter(downsampleStream)  # Filter out high frame rate
 gb.map(runYolo)              # Run the model
 #gb.map(storeResults)         # Store the results
+gb.map(runFaceDetection)     # Run the face detection
 gb.register('camera:0')

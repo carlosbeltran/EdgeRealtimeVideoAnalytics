@@ -15,14 +15,16 @@ class RedisImageStream(object):
         self.conn = conn
         self.camera = args.camera
         self.boxes = args.boxes
-        self.field = args.field.encode('utf-8') 
+        self.field = args.field.encode('utf-8')
 
     def get_last(self):
         ''' Gets latest from camera and model '''
         p = self.conn.pipeline()
         p.xrevrange(self.camera, count=1)  # Latest frame
         p.xrevrange(self.boxes, count=1)   # Latest boxes
-        cmsg, bmsg = p.execute()
+        p.xrevrange('camera:0:facedect', count=1)   # Latest boxes
+
+        cmsg, bmsg, fbmsg = p.execute()
         if cmsg:
             last_id = cmsg[0][0].decode('utf-8')
             label = f'{self.camera}:{last_id}'
@@ -38,6 +40,16 @@ class RedisImageStream(object):
                     y2 = boxes[box*4+3]
                     draw = ImageDraw.Draw(img)
                     draw.rectangle(((x1, y1), (x2, y2)), width=5, outline='red')
+            if fbmsg:
+                boxes = np.fromstring(bmsg[0][1]['boxes'.encode('utf-8')][1:-1], sep=',')
+                label += ' people: {}'.format(bmsg[0][1]['people'.encode('utf-8')].decode('utf-8'))
+                for box in range(int(bmsg[0][1]['people'.encode('utf-8')])):  # Draw boxes
+                    x1 = boxes[box*4]
+                    y1 = boxes[box*4+1]
+                    x2 = boxes[box*4+2]
+                    y2 = boxes[box*4+3]
+                    draw = ImageDraw.Draw(img)
+                    draw.rectangle(((x1, y1), (x2, y2)), width=5, outline='green')
             arr = np.array(img)
             arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
             cv2.putText(arr, label, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 1, cv2.LINE_AA)
@@ -49,30 +61,30 @@ class RedisImageStream(object):
             pass
 
 def videoDet(stream):
-    
+
   win_name = "Python RedisEdge Analytics Viewer"
   cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
   #continuously processes video feed and displays in window until Q is pressed
   while True:
-    
+
       #the read function gives two outputs. The check is a boolean function that returns if the video is being read
       #check, frame = video.read()
       frame = stream.get_last()
-    
+
       cv2.imshow(win_name, frame)
 
       #picks up the key press Q and exits when pressed
       key=cv2.waitKey(1)
       if key==ord('q'):
         break
-  
+
   #Closes video window
   cv2.destroyAllWindows()
 
 conn = None
 args = None
 #create an empty GUI window
-#window=Tk()	
+#window=Tk()
 
 #app = Flask(__name__)
 
@@ -101,7 +113,7 @@ if __name__ == '__main__':
     stream = RedisImageStream(conn, args)
 
     videoDet(stream)
-    
+
     #GUI tkinter button for starting the video capture
     #b1=Button(window, text="Start", command=videoDet)
     #b1.grid(row=0, column=0)
@@ -115,7 +127,7 @@ if __name__ == '__main__':
     #app.run(host='0.0.0.0')
     '''
     while True:
-    
+
         #the read function gives two outputs. The check is a boolean function that returns if the video is being read
         #check, frame = video.read()
         frame = stream.get_last()
@@ -124,7 +136,7 @@ if __name__ == '__main__':
         key=cv2.waitKey(1)
         if key==ord('q'):
             break
-  
+
     #Closes video window
     cv2.destroyAllWindows()
     '''
