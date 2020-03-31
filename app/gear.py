@@ -28,6 +28,36 @@ def process_image(img, height):
     img /= 255.0                        # Normalize 0..255 to 0..1.00
     return img
 
+#def storeResults(x):
+def storeYoloResults(ref_id,people,boxes):
+    ''' Stores the results in Redis Stream and TimeSeries data structures '''
+    global _mspf
+    #ref_id, people, boxes= x[0], int(x[1]), x[2]
+    ref_msec = int(str(ref_id).split('-')[0])
+
+    # Store the output in its own stream
+    res_id = execute('XADD', 'camera:0:yolo', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes, 'people', people)
+
+    # Add a sample to the output people and fps timeseries
+    res_msec = int(str(res_id).split('-')[0])
+    execute('TS.ADD', 'camera:0:people', ref_msec, people)
+    execute('TS.INCRBY', 'camera:0:out_fps', 1, 'RESET', 1)
+
+    # Adjust mspf to the moving average duration
+    total_duration = res_msec - ref_msec
+    avg_duration = 40 # forced trying to get rid fo the profiler
+    _mspf = avg_duration * 1.05  # A little extra leg room
+
+    # Make an arithmophilial homage to Count von Count for storage in the execution log
+    if people == 0:
+        return 'Now there are none.'
+    elif people == 1:
+        return 'There is one person in the frame!'
+    elif people == 2:
+        return 'And now there are are two!'
+    else:
+        return 'I counted {} people in the frame! Ah ah ah!'.format(people)
+
 def runYolo(x):
     ''' Runs the model on an input image from the stream '''
     IMG_SIZE = 416     # Model's input image size
@@ -89,40 +119,13 @@ def runYolo(x):
         # Store boxes as a flat list
         boxes_out += [x1,y1,x2,y2]
 
-    return x['streamId'], people_count, boxes_out
-
-def storeResults(x):
-    ''' Stores the results in Redis Stream and TimeSeries data structures '''
-    global _mspf
-    ref_id, people, boxes= x[0], int(x[1]), x[2]
-    ref_msec = int(str(ref_id).split('-')[0])
-
-    # Store the output in its own stream
-    res_id = execute('XADD', 'camera:0:yolo', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes, 'people', people)
-
-    # Add a sample to the output people and fps timeseries
-    res_msec = int(str(res_id).split('-')[0])
-    execute('TS.ADD', 'camera:0:people', ref_msec, people)
-    execute('TS.INCRBY', 'camera:0:out_fps', 1, 'RESET', 1)
-
-    # Adjust mspf to the moving average duration
-    total_duration = res_msec - ref_msec
-    avg_duration = 40 # forced trying to get rid fo the profiler
-    _mspf = avg_duration * 1.05  # A little extra leg room
-
-    # Make an arithmophilial homage to Count von Count for storage in the execution log
-    if people == 0:
-        return 'Now there are none.'
-    elif people == 1:
-        return 'There is one person in the frame!'
-    elif people == 2:
-        return 'And now there are are two!'
-    else:
-        return 'I counted {} people in the frame! Ah ah ah!'.format(people)
+    #return x['streamId'], people_count, boxes_out
+    storeYoloResults(x['streamId'], int(people_count), boxes_out)
+    return x
 
 # Create and register a gear that for each message in the stream
 gb = GearsBuilder('StreamReader')
 #gb.filter(downsampleStream)  # Filter out high frame rate
 gb.map(runYolo)              # Run the model
-gb.map(storeResults)         # Store the results
+#gb.map(storeResults)         # Store the results
 gb.register('camera:0')
