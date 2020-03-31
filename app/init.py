@@ -42,27 +42,6 @@ if __name__ == '__main__':
         res = conn.execute_command('AI.SCRIPTSET', 'yolo:script', args.device, script)
         print(res)
 
-    print('Creating timeseries keys and downsampling rules - ', end='')
-    res = []                                                             # RedisTimeSeries replies list
-    labels = ['LABELS', args.camera_prefix, args.camera_id, '__name__']  # A generic list of timeseries keys labels
-    # Create the main timeseries key
-    res.append(conn.execute_command('TS.CREATE', '{}:people'.format(input_stream_key), *labels, 'people'))
-    # Set up timeseries downsampling keys and rules
-    wins = [1, 5, 15]             # Downsampling windows
-    aggs = ['avg', 'min', 'max']  # Downsampling aggregates
-    for w in wins:
-        for a in aggs:
-            res.append(conn.execute_command('TS.CREATE', '{}:people:{}:{}m'.format(input_stream_key, a, w), *labels, 'people_{}_{}m'.format(a, w)))
-            res.append(conn.execute_command('TS.CREATERULE', '{}:people'.format(input_stream_key), '{}:people:{}:{}m'.format(input_stream_key, a, w), 'AGGREGATION', a, w*60))
-    # Set up fps timeseries keys
-    res.append(conn.execute_command('TS.CREATE', '{}:in_fps'.format(input_stream_key), *labels, 'in_fps'))
-    res.append(conn.execute_command('TS.CREATE', '{}:out_fps'.format(input_stream_key), *labels, 'out_fps'))
-    # Set up profiler timeseries keys
-    metrics = ['read', 'resize', 'model', 'script', 'boxes', 'store', 'total']
-    for m in metrics:
-        res.append(conn.execute_command('TS.CREATE', '{}:prf_{}'.format(input_stream_key,m), *labels, 'prf_{}'.format(m)))
-    print(res)
-
     # Load the gear
     print('Loading gear - ', end='')
     with open('gear.py', 'rb') as f:
@@ -71,5 +50,5 @@ if __name__ == '__main__':
         print(res)
 
     # Lastly, set a key that indicates initialization has been performed
-    print('Flag initialization as done - ', end='') 
+    print('Flag initialization as done - ', end='')
     print(conn.set(initialized_key, 'most certainly.'))
