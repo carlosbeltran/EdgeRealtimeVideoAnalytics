@@ -86,7 +86,7 @@ The profiler is used first and foremost for keeping track of the total (average)
 a frame - the information is required for setting the FPS dynamically. As a side benefit, it also provides
 per step metrics.
 '''
-prf = Profiler()
+#prf = Profiler()
 
 #def downsampleStream(x):
 #    ''' Drops input frames to match FPS '''
@@ -116,9 +116,9 @@ def process_image(img, height):
 
 def runYolo(x):
     ''' Runs the model on an input image from the stream '''
-    global prf
+    #global prf
     IMG_SIZE = 416     # Model's input image size
-    prf.start()        # Start a new profiler iteration
+    #prf.start()        # Start a new profiler iteration
 
     # log('read')
 
@@ -126,7 +126,7 @@ def runYolo(x):
     buf = io.BytesIO(x['image'])
     pil_image = Image.open(buf)
     numpy_img = np.array(pil_image)
-    prf.add('read')
+    #prf.add('read')
 
     # log('resize')
     # Resize, normalize and tensorize the image for the model (number of images, width, height, channels)
@@ -134,7 +134,7 @@ def runYolo(x):
     # log('tensor')
     img_ba = bytearray(image.tobytes())
     image_tensor = redisAI.createTensorFromBlob('FLOAT', [1, IMG_SIZE, IMG_SIZE, 3], img_ba)
-    prf.add('resize')
+    #prf.add('resize')
 
     # log('model')
     # Create the RedisAI model runner and run it
@@ -143,7 +143,7 @@ def runYolo(x):
     redisAI.modelRunnerAddOutput(modelRunner, 'output')
     model_replies = redisAI.modelRunnerRun(modelRunner)
     model_output = model_replies[0]
-    prf.add('model')
+    #prf.add('model')
 
     # log('script')
     # The model's output is processed with a PyTorch script for non maxima suppression
@@ -151,7 +151,7 @@ def runYolo(x):
     redisAI.scriptRunnerAddInput(scriptRunner, model_output)
     redisAI.scriptRunnerAddOutput(scriptRunner)
     script_reply = redisAI.scriptRunnerRun(scriptRunner)
-    prf.add('script')
+    #prf.add('script')
 
     # log('boxes')
     # The script outputs bounding boxes
@@ -180,13 +180,13 @@ def runYolo(x):
 
         # Store boxes as a flat list
         boxes_out += [x1,y1,x2,y2]
-    prf.add('boxes')
+    #prf.add('boxes')
 
     return x['streamId'], people_count, boxes_out
 
 def storeResults(x):
     ''' Stores the results in Redis Stream and TimeSeries data structures '''
-    global _mspf, prf
+    global _mspf#, prf
     ref_id, people, boxes= x[0], int(x[1]), x[2]
     ref_msec = int(str(ref_id).split('-')[0])
 
@@ -200,16 +200,17 @@ def storeResults(x):
 
     # Adjust mspf to the moving average duration
     total_duration = res_msec - ref_msec
-    prf.assign('total', total_duration)
-    avg_duration = prf.get('total')
+    #prf.assign('total', total_duration)
+    #avg_duration = prf.get('total')
+    avg_duration = 40 # forced trying to get rid fo the profiler
     _mspf = avg_duration * 1.05  # A little extra leg room
 
     # Record profiler steps
-    for name in prf.names:
-        current = prf.data[name].current
-        execute('TS.ADD', 'camera:0:prf_{}'.format(name), ref_msec, current)
+    #for name in prf.names:
+    #    current = prf.data[name].current
+    #    execute('TS.ADD', 'camera:0:prf_{}'.format(name), ref_msec, current)
 
-    prf.add('store')
+    #prf.add('store')
     # Make an arithmophilial homage to Count von Count for storage in the execution log
     if people == 0:
         return 'Now there are none.'
