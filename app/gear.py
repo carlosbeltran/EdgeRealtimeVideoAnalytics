@@ -88,15 +88,15 @@ per step metrics.
 '''
 prf = Profiler()
 
-def downsampleStream(x):
-    ''' Drops input frames to match FPS '''
-    global _mspf, _next_ts
-    execute('TS.INCRBY', 'camera:0:in_fps', 1, 'RESET', 1)  # Store the input fps count
-    ts, _ = map(int, str(x['streamId']).split('-'))         # Extract the timestamp part from the message ID
-    sample_it = _next_ts <= ts
-    if sample_it:                                           # Drop frames until the next timestamp is in the present/past
-        _next_ts = ts + _mspf
-    return sample_it
+#def downsampleStream(x):
+#    ''' Drops input frames to match FPS '''
+#    global _mspf, _next_ts
+#    execute('TS.INCRBY', 'camera:0:in_fps', 1, 'RESET', 1)  # Store the input fps count
+#    ts, _ = map(int, str(x['streamId']).split('-'))         # Extract the timestamp part from the message ID
+#    sample_it = _next_ts <= ts
+#    if sample_it:                                           # Drop frames until the next timestamp is in the present/past
+#        _next_ts = ts + _mspf
+#    return sample_it
 
 def process_image(img, height):
     ''' Utility to resize a rectangular image to a padded square (letterbox) '''
@@ -222,7 +222,7 @@ def storeResults(x):
 
 # Create and register a gear that for each message in the stream
 gb = GearsBuilder('StreamReader')
-gb.filter(downsampleStream)  # Filter out high frame rate
+#gb.filter(downsampleStream)  # Filter out high frame rate
 gb.map(runYolo)              # Run the model
 gb.map(storeResults)         # Store the results
 gb.register('camera:0')
