@@ -2,14 +2,17 @@
 import io
 import cv2
 import redisAI
+import redis
+import csv
 import numpy as np
 from time import time
 from PIL import Image
 
 from redisgears import executeCommand as execute
 
-face_cascade = cv2.CascadeClassifier('models/haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier('models/haarcascade_eye.xml')
+face_cascade = cv2.CascadeClassifier('/tmp/haarcascade_frontalface_default.xml')
+#face_cascade = cv2.CascadeClassifier('models/haarcascade_frontalface_default.xml')
+#eye_cascade  = cv2.CascadeClassifier('models/haarcascade_eye.xml')
 
 # Globals for downsampling
 _mspf = 1000 / 10.0      # Msecs per frame (initialized with 10.0 FPS)
@@ -65,6 +68,7 @@ def runYolo(x):
     ''' Runs the model on an input image from the stream '''
     IMG_SIZE = 416     # Model's input image size
 
+    #log('In runYolo')
     # log('read')
 
     # Read the image from the stream's message
@@ -126,39 +130,76 @@ def runYolo(x):
     storeYoloResults(x['streamId'], int(people_count), boxes_out)
     return x
 
+'''
+    boxes_out = [20,20,100,100]
+    people_count = 1
+    ref_id = x['streamId']
+    boxes= boxes_out
+    people = int(people_count)
+    res_id = execute('XADD', 'camera:0:facedect', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes, 'people', people)
+    return x
+'''
+
 def runFaceDetection(x):
 
+    global face_cascade
     # Read the image from the stream's message
     buf = io.BytesIO(x['image'])
     pil_image = Image.open(buf)
     numpy_img = np.array(pil_image)
-
-    #img=cv2.imread('face.jpg')
+    #face_cascade = cv2.CascadeClassifier('/tmp/haarcascade_frontalface_default.xml')
+    ##numpy_img = cv2.imread('/tmp/face.jpg')
     gray = cv2.cvtColor(numpy_img, cv2.COLOR_BGR2GRAY)
+    #cv2.imwrite('/data/face_gray.jpg', gray)
     faces = face_cascade.detectMultiScale(gray)
-    boxes_out = []
-    people_count = 0
-    for (x,y,w,h) in faces:
-        boxes_out += [x,y,x+w,y+h]
-        people_count += 1
-        #cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
-        #roi_gray  = gray[y:y+h, x:x+w]
-        #roi_color = img[y:y+h, x:x+w]
-        #eyes=eye_cascade.detectMultiScale(roi_gray)
-        #for(ex,ey,ew,eh) in eyes:
-        #    cv2.rectangle(roi_color,(ex, ey),(ex+ew, ey+eh),(0,255,0),2)
-        #        print(ex,ey)
-        #cv2.imshow('img',img)
+    #faces = []
+    boxes_out = [20,20,100,100]
+    boxes_out += [200,200,300,300]
+    #boxes_out = []
+    people_count = 2
+    #people_count = 0
+
+    #################
+    # ADDING THIS BLOCK OF CODE DOESN'T PROPAGATE BOXES (race condition)
+    #################
+    #for (x,y,w,h) in faces:
+    #    boxes_out += [x,y,x+w,y+h]
+    #    people_count += 1
+    #################
+    #################
+    # END BLOCK
+    #################
+
+    ##for (x,y,w,h) in faces:
+    ##    #boxes_out += [x,y,x+w,y+h]
+    ##    boxes_out += [300,300,400,400]
+    ##    people_count += 1
+    #    #cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
+    #    #roi_gray  = gray[y:y+h, x:x+w]
+    #    #roi_color = img[y:y+h, x:x+w]
+    #    #eyes=eye_cascade.detectMultiScale(roi_gray)
+    #    #for(ex,ey,ew,eh) in eyes:
+    #    #    cv2.rectangle(roi_color,(ex, ey),(ex+ew, ey+eh),(0,255,0),2)
+    #    #        print(ex,ey)
+    #    #cv2.imshow('img',img)
+
     ref_id = x['streamId']
-    boxes= boxes_out
+    #boxes  = boxes_out
     people = int(people_count)
     # Store the output in its own stream
-    res_id = execute('XADD', 'camera:0:facedect', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes, 'people', people)
+    res_id = execute('XADD', 'camera:0:facedect', 'MAXLEN', '~', 1000, '*', 'ref', ref_id, 'boxes', boxes_out, 'people', people)
+
+    for (x,y,w,h) in faces:
+        cv2.rectangle(numpy_img,(x,y),(x+w,y+h),(255,0,0),2)
+    cv2.imwrite('/data/face_rect.jpg', numpy_img)
+
+    return x
 
 # Create and register a gear that for each message in the stream
 gb = GearsBuilder('StreamReader')
-#gb.filter(downsampleStream)  # Filter out high frame rate
+#gb.filter(downsampleStream) # Filter out high frame rate
 gb.map(runYolo)              # Run the model
-#gb.map(storeResults)         # Store the results
+#gb.map(storeResults)        # Store the results
+
 gb.map(runFaceDetection)     # Run the face detection
 gb.register('camera:0')

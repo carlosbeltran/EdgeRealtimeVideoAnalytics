@@ -16,6 +16,7 @@ class RedisImageStream(object):
         self.camera = args.camera
         self.boxes = args.boxes
         self.field = args.field.encode('utf-8')
+        self.count = 1
 
     def get_last(self):
         ''' Gets latest from camera and model '''
@@ -23,11 +24,17 @@ class RedisImageStream(object):
         p.xrevrange(self.camera, count=1)  # Latest frame
         p.xrevrange(self.boxes, count=1)   # Latest boxes
         p.xrevrange('camera:0:facedect', count=1)   # Latest boxes
+        #p.xrange(self.camera, count=int(self.count))  # Latest frame
+        #p.xrange(self.boxes, count=int(self.count))   # Latest boxes
+        #p.xrange('camera:0:facedect', count=int(self.count))   # Latest boxes
+        self.count += 1
 
         cmsg, bmsg, fbmsg = p.execute()
+        #cmsg, fbmsg = p.execute()
         if cmsg:
             last_id = cmsg[0][0].decode('utf-8')
-            label = f'{self.camera}:{last_id}'
+            label  = f'{self.camera}:{last_id}'
+            label2 = f'{self.camera}:{last_id}'
             data = io.BytesIO(cmsg[0][1][self.field])
             img = Image.open(data)
             if bmsg:
@@ -41,9 +48,9 @@ class RedisImageStream(object):
                     draw = ImageDraw.Draw(img)
                     draw.rectangle(((x1, y1), (x2, y2)), width=5, outline='red')
             if fbmsg:
-                boxes = np.fromstring(bmsg[0][1]['boxes'.encode('utf-8')][1:-1], sep=',')
-                label += ' people: {}'.format(bmsg[0][1]['people'.encode('utf-8')].decode('utf-8'))
-                for box in range(int(bmsg[0][1]['people'.encode('utf-8')])):  # Draw boxes
+                boxes = np.fromstring(fbmsg[0][1]['boxes'.encode('utf-8')][1:-1], sep=',')
+                label2 += ' people: {}'.format(fbmsg[0][1]['people'.encode('utf-8')].decode('utf-8'))
+                for box in range(int(fbmsg[0][1]['people'.encode('utf-8')])):  # Draw boxes
                     x1 = boxes[box*4]
                     y1 = boxes[box*4+1]
                     x2 = boxes[box*4+2]
@@ -53,6 +60,7 @@ class RedisImageStream(object):
             arr = np.array(img)
             arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
             cv2.putText(arr, label, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 1, cv2.LINE_AA)
+            cv2.putText(arr, label2,(10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 1, cv2.LINE_AA)
             #ret, img = cv2.imencode('.jpg', arr)
             #return img.tobytes()
             return arr
